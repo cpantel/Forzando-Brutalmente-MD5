@@ -1,42 +1,154 @@
 module driver(
-  input CLK,
-  input reset_button,
-  input step_button,
-  input enable_switch,
-  input [3:0]target_switch,
+  input        CLK,
+  input        CPU_RESETN,
+  input        enable_switch,
+  input  [3:0] target_switch,
   output [7:0] SEG,
   output [7:0] DIGIT,
-  output running_led,
-  output done_led,
-  output found_led,
-  output found_pin
+  
+  output reg status_paused,
+  output reg status_running,
+  output reg status_warming,
+  output reg status_found,
+  output reg status_done
+  
 );
+
 wire [127:0] target_selected;
+wire  [28:0] counter_out;
+wire  [31:0] pipeline_counter;
 
-wire [28:0]  counter_out;
-wire [31:0]  pipeline_counter;
-
-wire step_debounced;
-wire enabled;
 wire found0, found1, found2, found3, found4, found5, found6, found7;
+wire found;
+assign found = ( found0 | found1 | found2 | found3 | found4 | found5 | found6 | found7 );
 
-assign enabled = enable_switch & ~ (found0 | found1 | found2 | found3 | found4 |found5 | found6 | found7);
-assign found_led = found0 | found1 | found2 | found3 | found4 |found5 | found6 | found7;
+
+wire warming_up_done;
+
+wire reset;
+assign reset = !CPU_RESETN;
+
+
+parameter state_start          = 7'b00000001;
+parameter state_warm_up        = 7'b00000010;
+parameter state_warm_up_paused = 7'b00000100;
+parameter state_running        = 7'b00001000;
+parameter state_running_paused = 7'b00010000;
+parameter state_found          = 7'b00100000;
+parameter state_not_found      = 7'b01000000;
+
+reg [6:0] state = state_start;
+
+
+
+always @(posedge CLK) begin
+  if (reset) begin
+     state           <= state_start;
+     status_paused   <= 1'b1;
+     status_running  <= 1'b0; 
+     status_warming  <= 1'b0;
+     status_found    <= 1'b0;
+     status_done     <= 1'b0;     
+     
+  end
+  else begin
+     case (state)
+        state_start : begin
+           if (enable_switch)
+              state <= state_warm_up;
+           status_paused   <= 1'b1;
+           status_running  <= 1'b0; 
+           status_warming  <= 1'b0;
+           status_found    <= 1'b0;
+           status_done     <= 1'b0;                   
+        end
+        
+        state_warm_up : begin
+           if (warming_up_done)
+              state <= state_running;
+           else if (!enable_switch)
+              state <= state_warm_up_paused;
+           status_paused   <= 1'b0;
+           status_running  <= 1'b1; 
+           status_warming  <= 1'b1;
+           status_found    <= 1'b0;
+           status_done     <= 1'b0;     
+        end
+        
+        state_warm_up_paused : begin
+           if (enable_switch )
+              state <= state_warm_up;
+           status_paused   <= 1'b1;
+           status_running  <= 1'b1; 
+           status_warming  <= 1'b1;
+           status_found    <= 1'b0;
+           status_done     <= 1'b0;     
+        end
+        
+        state_running : begin
+           if (found)
+              state <= state_found;
+           else if (counter_done)
+              state <= state_not_found;
+           else if (!enable_switch)
+              state <= state_running_paused;
+           status_paused   <= 1'b0;
+           status_running  <= 1'b1; 
+           status_warming  <= 1'b0;
+           status_found    <= 1'b0;
+           status_done     <= 1'b0;
+        end
+        
+        state_running_paused : begin
+           if (enable_switch)
+              state <= state_running;
+           status_paused   <= 1'b1;
+           status_running  <= 1'b1; 
+           status_warming  <= 1'b0;
+           status_found    <= 1'b0;
+           status_done     <= 1'b0;
+        end
+        
+        state_found : begin
+           status_paused   <= 1'b0;
+           status_running  <= 1'b0; 
+           status_warming  <= 1'b0;
+           status_found    <= 1'b1;
+           status_done     <= 1'b1;
+        end
+        
+        state_not_found : begin
+           status_paused   <= 1'b0;
+           status_running  <= 1'b0; 
+           status_warming  <= 1'b0;
+           status_found    <= 1'b0;
+           status_done     <= 1'b1;
+        end
+        
+     endcase
+  end							
+end							
+
+warmup_counter u_warm_upcounter(
+   .CLK(CLK),
+   .reset(reset),
+   .enable(status_warming),
+   .done(warming_up_done)
+);
 
 counter counter(.CLK(CLK),
-  .reset(reset_button),
-  .step(step_debounced),
-  .enable(enabled),
+  .reset(reset),
+  .step(0),
+  .enable(status_running),
   .count(counter_out),
   .running(running_led),
-  .done(done_led)
+  .done(counter_done)
 );
 
 pipeline pipeline0(.CLK(CLK),
   .counter_in({counter_out,3'b000}),
   .target_hash(target_selected),
   .reset(reset_button),
-  //.counter_out(pipeline_counter),
   .found(found0)
 );
 
@@ -44,7 +156,6 @@ pipeline pipeline1(.CLK(CLK),
   .counter_in({counter_out,3'b001}),
   .target_hash(target_selected),
   .reset(reset_button),
-  //.counter_out(pipeline_counter),
   .found(found1)
 );
 
@@ -52,7 +163,6 @@ pipeline pipeline2(.CLK(CLK),
   .counter_in({counter_out,3'b010}),
   .target_hash(target_selected),
   .reset(reset_button),
-  //.counter_out(pipeline_counter),
   .found(found2)
 );
 
@@ -60,7 +170,6 @@ pipeline pipeline3(.CLK(CLK),
   .counter_in({counter_out,3'b011}),
   .target_hash(target_selected),
   .reset(reset_button),
-  //.counter_out(pipeline_counter),
   .found(found3)
 );
 
@@ -68,7 +177,6 @@ pipeline pipeline4(.CLK(CLK),
   .counter_in({counter_out,3'b100}),
   .target_hash(target_selected),
   .reset(reset_button),
-  //.counter_out(pipeline_counter),
   .found(found4)
 );
 
@@ -76,7 +184,6 @@ pipeline pipeline5(.CLK(CLK),
   .counter_in({counter_out,3'b101}),
   .target_hash(target_selected),
   .reset(reset_button),
-  //.counter_out(pipeline_counter),
   .found(found5)
 );
 
@@ -84,7 +191,6 @@ pipeline pipeline6(.CLK(CLK),
   .counter_in({counter_out,3'b110}),
   .target_hash(target_selected),
   .reset(reset_button),
-  //.counter_out(pipeline_counter),
   .found(found6)
 );
 
@@ -92,14 +198,7 @@ pipeline pipeline7(.CLK(CLK),
   .counter_in({counter_out,3'b111}),
   .target_hash(target_selected),
   .reset(reset_button),
-  //.counter_out(pipeline_counter),
   .found(found7)
-);
-
-
-debouncer step_debouncer(.CLK(CLK),
-  .switch_input(step_button),
-  .trans_up(step_debounced)
 );
 
 display_7_seg display(.CLK (CLK), 

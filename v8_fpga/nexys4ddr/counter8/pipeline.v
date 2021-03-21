@@ -4,10 +4,10 @@ module pipeline (
   input  [127:0]target_hash,
   input  reset,
  // output reg [31:0]counter_out,
-  output found
+  output reg found
 );
 reg [127:0] hash;
-reg hash_equal = 0;
+reg hash_equal;
 
 reg [31:0] counter00, A00, B00, C00, D00, F00;
 reg [31:0] counter01, A01, B01, C01, D01, F01;
@@ -946,19 +946,34 @@ begin
 //  counter_out <= {counter63[7:0],counter63[15:8],counter63[23:16],counter63[31:24]} - 32'h00000043;
 end
 
+//// stage 65
+//always @(posedge CLK)
+//begin
+//  if (reset)
+//    hash_equal <= 1'h0;
+//  else if ( hash == target_hash)
+//    hash_equal <= 1'h1;
+//end
+
 // stage 65
 always @(posedge CLK)
 begin
   if (reset)
-    hash_equal <= 1'h0;
+    found <= 1'h0;
   else if ( hash == target_hash)
-    hash_equal <= 1'h1;
+    found <= 1'b1;
+  else 
+    found <= 1'b0;
 end
 
-sr_ff ff(.CLK(CLK),
-  .set(hash_equal),
-  .reset(reset),
-  .Q(found)
-);
+
+
+//sr_ff ff(.CLK(CLK),
+//  .set(hash_equal),
+//  .reset(reset),
+//  .Q(found)
+//);
+
+//assign found = hash == target_hash ? 1'b1 : 1'b0;
 
 endmodule
