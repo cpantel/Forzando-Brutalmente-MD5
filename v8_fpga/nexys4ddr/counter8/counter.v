@@ -3,11 +3,13 @@ module counter(
    input reset,
    input enable,
    input step,
-   output reg [29:0] count,
+   output [28:0] counter_out,
    output reg running,
    output reg done
 );
 
+reg [29:0] count;
+assign counter_out = count[28:0];
 initial count   = 0;
 initial running = 0;
 initial done    = 0;

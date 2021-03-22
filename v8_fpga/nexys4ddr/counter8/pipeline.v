@@ -946,15 +946,6 @@ begin
 //  counter_out <= {counter63[7:0],counter63[15:8],counter63[23:16],counter63[31:24]} - 32'h00000043;
 end
 
-//// stage 65
-//always @(posedge CLK)
-//begin
-//  if (reset)
-//    hash_equal <= 1'h0;
-//  else if ( hash == target_hash)
-//    hash_equal <= 1'h1;
-//end
-
 // stage 65
 always @(posedge CLK)
 begin
@@ -965,15 +956,5 @@ begin
   else 
     found <= 1'b0;
 end
-
-
-
-//sr_ff ff(.CLK(CLK),
-//  .set(hash_equal),
-//  .reset(reset),
-//  .Q(found)
-//);
-
-//assign found = hash == target_hash ? 1'b1 : 1'b0;
 
 endmodule

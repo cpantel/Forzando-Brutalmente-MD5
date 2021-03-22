@@ -3,9 +3,8 @@ module driver(
   input        CPU_RESETN,
   input        enable_switch,
   input  [3:0] target_switch,
-  output [7:0] SEG,
-  output [7:0] DIGIT,
   
+  output [31:0] target,
   output reg status_paused,
   output reg status_running,
   output reg status_warming,
@@ -16,7 +15,7 @@ module driver(
 
 wire [127:0] target_selected;
 wire  [28:0] counter_out;
-wire  [31:0] pipeline_counter;
+assign target = {counter_out,3'b000};
 
 wire found0, found1, found2, found3, found4, found5, found6, found7;
 wire found;
@@ -140,7 +139,7 @@ counter counter(.CLK(CLK),
   .reset(reset),
   .step(0),
   .enable(status_running),
-  .count(counter_out),
+  .counter_out(counter_out),
   .running(running_led),
   .done(counter_done)
 );
@@ -148,67 +147,61 @@ counter counter(.CLK(CLK),
 pipeline pipeline0(.CLK(CLK),
   .counter_in({counter_out,3'b000}),
   .target_hash(target_selected),
-  .reset(reset_button),
+  .reset(reset),
   .found(found0)
 );
 
 pipeline pipeline1(.CLK(CLK),
   .counter_in({counter_out,3'b001}),
   .target_hash(target_selected),
-  .reset(reset_button),
+  .reset(reset),
   .found(found1)
 );
 
 pipeline pipeline2(.CLK(CLK),
   .counter_in({counter_out,3'b010}),
   .target_hash(target_selected),
-  .reset(reset_button),
+  .reset(reset),
   .found(found2)
 );
 
 pipeline pipeline3(.CLK(CLK),
   .counter_in({counter_out,3'b011}),
   .target_hash(target_selected),
-  .reset(reset_button),
+  .reset(reset),
   .found(found3)
 );
 
 pipeline pipeline4(.CLK(CLK),
   .counter_in({counter_out,3'b100}),
   .target_hash(target_selected),
-  .reset(reset_button),
+  .reset(reset),
   .found(found4)
 );
 
 pipeline pipeline5(.CLK(CLK),
   .counter_in({counter_out,3'b101}),
   .target_hash(target_selected),
-  .reset(reset_button),
+  .reset(reset),
   .found(found5)
 );
 
 pipeline pipeline6(.CLK(CLK),
   .counter_in({counter_out,3'b110}),
   .target_hash(target_selected),
-  .reset(reset_button),
+  .reset(reset),
   .found(found6)
 );
 
 pipeline pipeline7(.CLK(CLK),
   .counter_in({counter_out,3'b111}),
   .target_hash(target_selected),
-  .reset(reset_button),
+  .reset(reset),
   .found(found7)
 );
 
-display_7_seg display(.CLK (CLK), 
-  .number_in({counter_out,3'b000}),
-  .SEG (SEG),
-  .DIGIT (DIGIT)
-);
-
 data_selector data_selector(.CLK(CLK),
-  .reset(reset_button),
+  .reset(reset),
   .selector(target_switch),
   .dataOut(target_selected)
 );
