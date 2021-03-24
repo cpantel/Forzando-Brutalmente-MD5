@@ -2,8 +2,7 @@ module driver(
   input        CLK,
   input        CPU_RESETN,
   input        enable_switch,
-  input  [3:0] target_switch,
-  
+  input  [127:0] target_selected,  
   output [31:0] target,
   output reg status_paused,
   output reg status_running,
@@ -13,7 +12,7 @@ module driver(
   
 );
 
-wire [127:0] target_selected;
+
 wire  [28:0] counter_out;
 assign target = {counter_out,3'b000};
 
@@ -38,6 +37,12 @@ parameter state_not_found      = 7'b01000000;
 
 reg [6:0] state = state_start;
 
+//always @(posedge CLK) begin
+//  if (reset) begin
+//    target = 31'h00000000;
+//  end else 
+//    target = {counter_out,3'b000};
+//end
 
 
 always @(posedge CLK) begin
@@ -200,10 +205,5 @@ pipeline pipeline7(.CLK(CLK),
   .found(found7)
 );
 
-data_selector data_selector(.CLK(CLK),
-  .reset(reset),
-  .selector(target_switch),
-  .dataOut(target_selected)
-);
 
 endmodule
